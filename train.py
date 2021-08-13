@@ -15,7 +15,7 @@ from utils.summaries import TensorboardSummary
 from utils.metrics import Evaluator
 
 class Trainer(object):
-    def __init__(self, args):
+    def __init__(self, args):#,model):
         self.args = args
 
         # Define Saver
@@ -28,7 +28,7 @@ class Trainer(object):
         # Define Dataloader
         kwargs = {'num_workers': args.workers, 'pin_memory': True}
         self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(args, **kwargs)
-
+        #backbone = model
         # Define network
         model = DeepLab(num_classes=self.nclass,
                         backbone=args.backbone,
@@ -94,7 +94,9 @@ class Trainer(object):
         train_loss = 0.0
         self.model.train()
         tbar = tqdm(self.train_loader)
-        num_img_tr = len(self.train_loader)
+        num_tr_batches = len(self.train_loader)
+        num_img_tr = num_tr_batches * self.train_loader.batch_size
+        print('total number of images (roughly): {}'.format(num_img_tr) )
         for i, sample in enumerate(tbar):
             image, target = sample['image'], sample['label']
             if self.args.cuda:
@@ -102,6 +104,7 @@ class Trainer(object):
             self.scheduler(self.optimizer, i, epoch, self.best_pred)
             self.optimizer.zero_grad()
             output = self.model(image)
+         #   print(target[1:])
             loss = self.criterion(output, target)
             loss.backward()
             self.optimizer.step()
@@ -112,6 +115,7 @@ class Trainer(object):
             # Show 10 * 3 inference results each epoch
             if i % (num_img_tr // 10) == 0:
                 global_step = i + num_img_tr * epoch
+               # print("I was here!!")
                 self.summary.visualize_image(self.writer, self.args.dataset, image, target, output, global_step)
 
         self.writer.add_scalar('train/total_loss_epoch', train_loss, epoch)
@@ -129,10 +133,14 @@ class Trainer(object):
             }, is_best)
 
 
-    def validation(self, epoch):
+    def validation(self,epoch, loader='val'):
         self.model.eval()
         self.evaluator.reset()
-        tbar = tqdm(self.val_loader, desc='\r')
+        if(loader=="val"):
+            tbar = tqdm(self.val_loader, desc='\r')
+        elif(loader=="test"):
+            print('TEST RESULTS ARE BELOW::::::::::::::::::::::::::::')
+            tbar = tqdm(self.test_loader, desc='\r')
         test_loss = 0.0
         for i, sample in enumerate(tbar):
             image, target = sample['image'], sample['label']
@@ -152,7 +160,7 @@ class Trainer(object):
         # Fast test during the training
         Acc = self.evaluator.Pixel_Accuracy()
         Acc_class = self.evaluator.Pixel_Accuracy_Class()
-        mIoU = self.evaluator.Mean_Intersection_over_Union()
+        mIoU,IoU = self.evaluator.Mean_Intersection_over_Union()
         FWIoU = self.evaluator.Frequency_Weighted_Intersection_over_Union()
         self.writer.add_scalar('val/total_loss_epoch', test_loss, epoch)
         self.writer.add_scalar('val/mIoU', mIoU, epoch)
@@ -162,18 +170,21 @@ class Trainer(object):
         print('Validation:')
         print('[Epoch: %d, numImages: %5d]' % (epoch, i * self.args.batch_size + image.data.shape[0]))
         print("Acc:{}, Acc_class:{}, mIoU:{}, fwIoU: {}".format(Acc, Acc_class, mIoU, FWIoU))
+        print("Classwise_IoU:")
+        print(IoU)
         print('Loss: %.3f' % test_loss)
-
-        new_pred = mIoU
-        if new_pred > self.best_pred:
-            is_best = True
-            self.best_pred = new_pred
-            self.saver.save_checkpoint({
-                'epoch': epoch + 1,
-                'state_dict': self.model.module.state_dict(),
-                'optimizer': self.optimizer.state_dict(),
-                'best_pred': self.best_pred,
-            }, is_best)
+        print(self.evaluator.confusion_matrix)
+        if(loader=='val'):
+            new_pred = mIoU
+            if new_pred > self.best_pred:
+                is_best = True
+                self.best_pred = new_pred
+                self.saver.save_checkpoint({
+                    'epoch': epoch + 1,
+                    'state_dict': self.model.module.state_dict(),
+                    'optimizer': self.optimizer.state_dict(),
+                    'best_pred': self.best_pred,
+                }, is_best)
 
 def main():
     parser = argparse.ArgumentParser(description="PyTorch DeeplabV3Plus Training")
@@ -182,11 +193,11 @@ def main():
                         help='backbone name (default: resnet)')
     parser.add_argument('--out-stride', type=int, default=16,
                         help='network output stride (default: 8)')
-    parser.add_argument('--dataset', type=str, default='pascal',
-                        choices=['pascal', 'coco', 'cityscapes'],
+    parser.add_argument('--dataset', type=str, default='cityscapes',
+                        choices=['pascal', 'coco', 'cityscapes','marsh'],
                         help='dataset name (default: pascal)')
-    parser.add_argument('--use-sbd', action='store_true', default=True,
-                        help='whether to use SBD dataset (default: True)')
+    parser.add_argument('--use-sbd', action='store_true', default=False,
+                        help='whether to use SBD dataset (default: False)')
     parser.add_argument('--workers', type=int, default=4,
                         metavar='N', help='dataloader threads')
     parser.add_argument('--base-size', type=int, default=513,
@@ -205,7 +216,7 @@ def main():
                         help='number of epochs to train (default: auto)')
     parser.add_argument('--start_epoch', type=int, default=0,
                         metavar='N', help='start epochs (default:0)')
-    parser.add_argument('--batch-size', type=int, default=None,
+    parser.add_argument('--batch-size', type=int, default=2,
                         metavar='N', help='input batch size for \
                                 training (default: auto)')
     parser.add_argument('--test-batch-size', type=int, default=None,
@@ -243,7 +254,7 @@ def main():
                         help='finetuning on a different dataset')
     # evaluation option
     parser.add_argument('--eval-interval', type=int, default=1,
-                        help='evaluuation interval (default: 1)')
+                        help='evaluation interval (default: 1)')
     parser.add_argument('--no-val', action='store_true', default=False,
                         help='skip validation during training')
 
@@ -267,6 +278,7 @@ def main():
             'coco': 30,
             'cityscapes': 200,
             'pascal': 50,
+			'marsh' : 100,
         }
         args.epochs = epoches[args.dataset.lower()]
 
@@ -281,6 +293,7 @@ def main():
             'coco': 0.1,
             'cityscapes': 0.01,
             'pascal': 0.007,
+			'marsh' : 0.01,
         }
         args.lr = lrs[args.dataset.lower()] / (4 * len(args.gpu_ids)) * args.batch_size
 
@@ -288,6 +301,7 @@ def main():
     if args.checkname is None:
         args.checkname = 'deeplab-'+str(args.backbone)
     print(args)
+    print('This will also print testing data results.. hopefully...')
     torch.manual_seed(args.seed)
     trainer = Trainer(args)
     print('Starting Epoch:', trainer.args.start_epoch)
@@ -296,6 +310,8 @@ def main():
         trainer.training(epoch)
         if not trainer.args.no_val and epoch % args.eval_interval == (args.eval_interval - 1):
             trainer.validation(epoch)
+    if(trainer.test_loader != None):
+        trainer.validation(0,loader='test')
 
     trainer.writer.close()
 

@@ -27,6 +27,9 @@ def decode_segmap(label_mask, dataset, plot=False):
     elif dataset == 'cityscapes':
         n_classes = 19
         label_colours = get_cityscapes_labels()
+    elif dataset == 'marsh': 
+        n_classes=9
+        label_colours = get_marsh_labels()
     else:
         raise NotImplementedError
 
@@ -86,7 +89,19 @@ def get_cityscapes_labels():
         [0, 80, 100],
         [0, 0, 230],
         [119, 11, 32]])
-
+		
+def get_marsh_labels():
+    """Change it to RGB, its BGR right now."""
+    return np.array([
+        [255, 255, 255],
+        [255, 63, 42],
+        [127, 255, 140],
+        [101, 85, 255],
+        [255, 202, 28],
+        [113, 255, 221],
+        [212, 70, 255],
+        [99, 187, 255],
+        [255, 56, 169]])
 
 def get_pascal_labels():
     """Load the mapping that associates pascal classes with label colors

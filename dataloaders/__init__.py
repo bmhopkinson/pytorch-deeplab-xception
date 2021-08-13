@@ -1,4 +1,4 @@
-from dataloaders.datasets import cityscapes, coco, combine_dbs, pascal, sbd
+from dataloaders.datasets import cityscapes, coco, combine_dbs, pascal, sbd, saltmarsh
 from torch.utils.data import DataLoader
 
 def make_data_loader(args, **kwargs):
@@ -37,6 +37,16 @@ def make_data_loader(args, **kwargs):
         test_loader = None
         return train_loader, val_loader, test_loader, num_class
 
+    elif args.dataset=='marsh':
+	
+        train_set= saltmarsh.SaltmarshSegmentation(args, split='train')
+        val_set= saltmarsh.SaltmarshSegmentation(args, split='val')
+        test_set= saltmarsh.SaltmarshSegmentation(args, split='test')
+
+        num_class = train_set.NUM_CLASSES
+        train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, drop_last=True, **kwargs) #made drop last true because of non-divisible number with batch size.
+        val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=False, drop_last=False, **kwargs)
+        test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False, drop_last=False, **kwargs)
+        return train_loader, val_loader, test_loader, num_class
     else:
         raise NotImplementedError
-
