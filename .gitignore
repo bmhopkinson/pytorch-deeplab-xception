@@ -9,6 +9,7 @@ __pycache__/
 Data/
 run/
 .idea/
+confusion_matrix.jpg
 
 # Distribution / packaging
 .Python

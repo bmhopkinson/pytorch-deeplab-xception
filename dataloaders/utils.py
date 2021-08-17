@@ -91,17 +91,26 @@ def get_cityscapes_labels():
         [119, 11, 32]])
 		
 def get_marsh_labels():
-    """Change it to RGB, its BGR right now."""
     return np.array([
-        [255, 255, 255],
-        [255, 63, 42],
-        [127, 255, 140],
-        [101, 85, 255],
-        [255, 202, 28],
-        [113, 255, 221],
-        [212, 70, 255],
-        [99, 187, 255],
-        [255, 56, 169]])
+        # [255, 255, 255],
+        # [255, 63, 42],
+        # [127, 255, 140],
+        # [101, 85, 255],
+        # [255, 202, 28],
+        # [113, 255, 221],
+        # [212, 70, 255],
+        # [99, 187, 255],
+        # [255, 56, 169]]
+        [255, 255, 255],  # background
+        [127, 255, 140],  # Spartina
+        [113, 255, 221],  # dead Spartina
+        [99, 187, 255],  # Sarcocornia
+        [101, 85, 255],  # Batis
+        [212, 70, 255],  # Juncus
+        [255, 56, 169],  # Borrichia
+        [255, 63, 42],  # Limonium
+        [255, 202, 28]  #other
+    ])
 
 def get_pascal_labels():
     """Load the mapping that associates pascal classes with label colors

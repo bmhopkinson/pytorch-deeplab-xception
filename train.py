@@ -3,7 +3,8 @@ import os
 import numpy as np
 from tqdm import tqdm
 
-from mypath import Path
+import myinfo
+from myinfo import Path
 from dataloaders import make_data_loader
 from modeling.sync_batchnorm.replicate import patch_replication_callback
 from modeling.deeplab import *
@@ -11,8 +12,9 @@ from utils.loss import SegmentationLosses
 from utils.calculate_weights import calculate_weigths_labels
 from utils.lr_scheduler import LR_Scheduler
 from utils.saver import Saver
-from utils.summaries import TensorboardSummary
+from utils.summaries import TensorboardSummary, save_confusion_matrix
 from utils.metrics import Evaluator
+
 
 class Trainer(object):
     def __init__(self, args):#,model):
@@ -24,6 +26,7 @@ class Trainer(object):
         # Define Tensorboard Summary
         self.summary = TensorboardSummary(self.saver.experiment_dir)
         self.writer = self.summary.create_summary()
+        self.class_info = myinfo.getClassInfoFactory(args.dataset)
         
         # Define Dataloader
         kwargs = {'num_workers': args.workers, 'pin_memory': True}
@@ -90,6 +93,28 @@ class Trainer(object):
         if args.ft:
             args.start_epoch = 0
 
+    def process_batch(self, image, target, train):
+        if self.args.cuda:
+            image, target = image.cuda(), target.cuda()
+
+        if train:
+            self.optimizer.zero_grad()
+        else:
+            torch.no_grad()
+
+        output = self.model(image)
+        loss = self.criterion(output, target)
+        pred = output.data.cpu().numpy()
+        pred = np.argmax(pred, axis=1)
+
+        if train:
+            loss.backward()
+            self.optimizer.step()
+
+        torch.enable_grad()  #re-enable gradient in case it was disabled for val/test
+        return loss, pred
+
+
     def training(self, epoch):
         train_loss = 0.0
         self.model.train()
@@ -98,25 +123,20 @@ class Trainer(object):
         num_img_tr = num_tr_batches * self.train_loader.batch_size
         print('total number of images (roughly): {}'.format(num_img_tr) )
         for i, sample in enumerate(tbar):
-            image, target = sample['image'], sample['label']
-            if self.args.cuda:
-                image, target = image.cuda(), target.cuda()
             self.scheduler(self.optimizer, i, epoch, self.best_pred)
             self.optimizer.zero_grad()
-            output = self.model(image)
-         #   print(target[1:])
-            loss = self.criterion(output, target)
-            loss.backward()
-            self.optimizer.step()
+
+            image, target = sample['image'], sample['label']
+            loss, pred = self.process_batch(image, target, True)
             train_loss += loss.item()
             tbar.set_description('Train loss: %.3f' % (train_loss / (i + 1)))
-            self.writer.add_scalar('train/total_loss_iter', loss.item(), i + num_img_tr * epoch)
+            self.writer.add_scalar('train/total_loss_iter', loss.item(), i + num_tr_batches * epoch)
 
             # Show 10 * 3 inference results each epoch
-            if i % (num_img_tr // 10) == 0:
-                global_step = i + num_img_tr * epoch
-               # print("I was here!!")
-                self.summary.visualize_image(self.writer, self.args.dataset, image, target, output, global_step)
+            #if i % (num_tr_batches // 10) == 0:
+            if i % (num_tr_batches // 2) == 0:
+                global_step = i + num_tr_batches * epoch
+                self.summary.visualize_image(self.writer, self.args.dataset, image, target, pred, global_step)
 
         self.writer.add_scalar('train/total_loss_epoch', train_loss, epoch)
         print('[Epoch: %d, numImages: %5d]' % (epoch, i * self.args.batch_size + image.data.shape[0]))
@@ -136,24 +156,15 @@ class Trainer(object):
     def validation(self,epoch, loader='val'):
         self.model.eval()
         self.evaluator.reset()
-        if(loader=="val"):
-            tbar = tqdm(self.val_loader, desc='\r')
-        elif(loader=="test"):
-            print('TEST RESULTS ARE BELOW::::::::::::::::::::::::::::')
-            tbar = tqdm(self.test_loader, desc='\r')
+        tbar = tqdm(self.val_loader, desc='\r')
         test_loss = 0.0
         for i, sample in enumerate(tbar):
             image, target = sample['image'], sample['label']
-            if self.args.cuda:
-                image, target = image.cuda(), target.cuda()
-            with torch.no_grad():
-                output = self.model(image)
-            loss = self.criterion(output, target)
+            loss, pred = self.process_batch(image, target, False)
+
             test_loss += loss.item()
             tbar.set_description('Test loss: %.3f' % (test_loss / (i + 1)))
-            pred = output.data.cpu().numpy()
             target = target.cpu().numpy()
-            pred = np.argmax(pred, axis=1)
             # Add batch sample into evaluator
             self.evaluator.add_batch(target, pred)
 
@@ -174,6 +185,9 @@ class Trainer(object):
         print(IoU)
         print('Loss: %.3f' % test_loss)
         print(self.evaluator.confusion_matrix)
+        save_confusion_matrix(self.evaluator.confusion_matrix, self.class_info.class_names)
+
+
         if(loader=='val'):
             new_pred = mIoU
             if new_pred > self.best_pred:
@@ -185,6 +199,35 @@ class Trainer(object):
                     'optimizer': self.optimizer.state_dict(),
                     'best_pred': self.best_pred,
                 }, is_best)
+
+    def testing(self):
+        self.model.eval()
+        self.evaluator.reset()
+        print('TEST RESULTS ARE BELOW::::::::::::::::::::::::::::')
+        tbar = tqdm(self.test_loader, desc='\r')
+        test_loss = 0.0
+        for i, sample in enumerate(tbar):
+            image, target = sample['image'], sample['label']
+            loss, pred = self.process_batch(image, target, False)
+            # Add batch sample into evaluator
+            target = target.cpu().numpy()
+            self.evaluator.add_batch(target, pred)
+
+        Acc = self.evaluator.Pixel_Accuracy()
+        Acc_class = self.evaluator.Pixel_Accuracy_Class()
+        mIoU, IoU = self.evaluator.Mean_Intersection_over_Union()
+        FWIoU = self.evaluator.Frequency_Weighted_Intersection_over_Union()
+        self.writer.add_scalar('test/total_loss_epoch', test_loss, 1)
+        self.writer.add_scalar('test/mIoU', mIoU, 1)
+        self.writer.add_scalar('test/Acc', Acc, 1)
+        self.writer.add_scalar('test/Acc_class', Acc_class, 1)
+        self.writer.add_scalar('test/fwIoU', FWIoU, 1)
+        print('Testing:')
+        print("Acc:{}, Acc_class:{}, mIoU:{}, fwIoU: {}".format(Acc, Acc_class, mIoU, FWIoU))
+        print("Classwise_IoU:")
+        print(IoU)
+        print('Loss: %.3f' % test_loss)
+        print(self.evaluator.confusion_matrix)
 
 def main():
     parser = argparse.ArgumentParser(description="PyTorch DeeplabV3Plus Training")
@@ -311,7 +354,7 @@ def main():
         if not trainer.args.no_val and epoch % args.eval_interval == (args.eval_interval - 1):
             trainer.validation(epoch)
     if(trainer.test_loader != None):
-        trainer.validation(0,loader='test')
+        trainer.testing()
 
     trainer.writer.close()
 

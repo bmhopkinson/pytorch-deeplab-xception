@@ -4,15 +4,18 @@ import os
 import numpy as np
 import scipy.misc as m
 from PIL import Image
-from mypath import Path
+from myinfo import Path
 from torchvision import transforms
 from dataloaders import custom_transforms as tr
-#this class is based on Cityscapes Dataset in the given repo..
-#this class is based on Cityscapes Dataset in the given repo..
+
+import sys
+sys.path.insert(1, os.path.join(sys.path[0], '../..'))
+import myinfo
+
 class SaltmarshSegmentation(data.Dataset):
     NUM_CLASSES = 9
 
-    def __init__(self, args,root=r"./Data/", split="train"):
+    def __init__(self, args,root=Path.db_root_dir('marsh'), split="train"):
 
         self.root = root
         self.split = split
@@ -22,25 +25,10 @@ class SaltmarshSegmentation(data.Dataset):
 
         self.set_data_names()
 
-        #self.void_classes = [0]
-        self.valid_classes = [0,1,2,3,4,5,6,7,8]
-        self.class_names = ['Background','Limonium', 'Spartina', 'Batis', 'Other', 'Spart_dead', \
-                            'Juncus', 'Sacricornia', 'Borrichia']
-
-        #self.ignore_index = 255
-        #self.class_map = dict(zip(self.valid_classes, range(self.NUM_CLASSES)))
-        self.class_map = {  #RGB to Class
-            (255, 255, 255): 0 , #background
-            (150, 255,  14): 0,  # Background_alt
-            (127, 255, 140): 1, #Spartina
-            (113, 255, 221): 2,  # dead Spartina
-            ( 99, 187, 255): 3,  # Sarcocornia
-            (101,  85, 255): 4,  # Batis
-            (212,  70, 255): 5,  # Juncus
-            (255,  56, 169): 6,  # Borrichia
-            (255,  63,  42): 7,  # Limonium
-            (255, 202,  28): 8  # Other
-        }
+        class_info = myinfo.getClassInfoFactory('marsh')
+        self.valid_classes = class_info.valid_classes
+        self.class_names = class_info.class_names
+        self.class_map = class_info.class_map
 
     def __len__(self):
         return len(self.images)
