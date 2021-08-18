@@ -2,17 +2,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-def decode_seg_map_sequence(label_masks, dataset='pascal'):
+def encode_seg_map_sequence(label_masks, dataset='pascal', dtype = 'float'):
     rgb_masks = []
     for label_mask in label_masks:
-        rgb_mask = decode_segmap(label_mask, dataset)
+        rgb_mask = encode_segmap(label_mask, dataset, dtype=dtype)
         rgb_masks.append(rgb_mask)
     rgb_masks = torch.from_numpy(np.array(rgb_masks).transpose([0, 3, 1, 2]))
     return rgb_masks
 
 
-def decode_segmap(label_mask, dataset, plot=False):
-    """Decode segmentation class labels into a color image
+def encode_segmap(label_mask, dataset, plot=False, dtype='float'):
+    """encode segmentation class labels into a color image
     Args:
         label_mask (np.ndarray): an (M,N) array of integer values denoting
           the class label at each spatial location.
@@ -28,7 +28,7 @@ def decode_segmap(label_mask, dataset, plot=False):
         n_classes = 19
         label_colours = get_cityscapes_labels()
     elif dataset == 'marsh': 
-        n_classes=9
+        n_classes = 9
         label_colours = get_marsh_labels()
     else:
         raise NotImplementedError
@@ -40,10 +40,19 @@ def decode_segmap(label_mask, dataset, plot=False):
         r[label_mask == ll] = label_colours[ll, 0]
         g[label_mask == ll] = label_colours[ll, 1]
         b[label_mask == ll] = label_colours[ll, 2]
-    rgb = np.zeros((label_mask.shape[0], label_mask.shape[1], 3))
-    rgb[:, :, 0] = r / 255.0
-    rgb[:, :, 1] = g / 255.0
-    rgb[:, :, 2] = b / 255.0
+
+    rgb = []
+    if dtype == 'float':
+        rgb = np.zeros((label_mask.shape[0], label_mask.shape[1], 3))
+        rgb[:, :, 0] = r / 255.0
+        rgb[:, :, 1] = g / 255.0
+        rgb[:, :, 2] = b / 255.0
+    elif dtype == 'int':
+        rgb = np.zeros((label_mask.shape[0], label_mask.shape[1], 3), dtype=np.uint8)
+        rgb[:, :, 0] = r
+        rgb[:, :, 1] = g
+        rgb[:, :, 2] = b
+
     if plot:
         plt.imshow(rgb)
         plt.show()
@@ -51,8 +60,8 @@ def decode_segmap(label_mask, dataset, plot=False):
         return rgb
 
 
-def encode_segmap(mask):
-    """Encode segmentation label images as pascal classes
+def decode_segmap(mask):
+    """decode segmentation label images as pascal classes
     Args:
         mask (np.ndarray): raw segmentation label image of dimension
           (M, N, 3), in which the Pascal classes are encoded as colours.

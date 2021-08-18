@@ -36,13 +36,16 @@ class SaltmarshSegmentation(data.Dataset):
     def __getitem__(self, index):
         
         img_path = self.root+"/"+self.split+"/"+self.images[index]
-        lbl_path = self.root+"/"+self.split+"/"+self.masks[index]
-       # print(img_path)
         _img = Image.open(img_path).convert('RGB')
+        img_dim = _img.size
 
-        _tmp = np.array(Image.open(lbl_path), dtype=np.uint8)
-    #    _target = self.maskrgb_to_class(_tmp)
-        _target = Image.fromarray(np.array(_tmp))
+        _target = []
+        if not self.split == 'predict':
+            lbl_path = self.root+"/"+self.split+"/"+self.masks[index]
+            _tmp = np.array(Image.open(lbl_path), dtype=np.uint8)
+            _target = Image.fromarray(np.array(_tmp))
+        else:
+            _target = img_path
 
         sample = {'image': _img, 'label': _target}
 
@@ -52,8 +55,12 @@ class SaltmarshSegmentation(data.Dataset):
             sample = self.transform_val(sample)
         elif self.split == 'test':
             sample =  self.transform_ts(sample)
+        elif self.split == 'predict':
+            sample['image'] = self.transform_pred(sample['image'])
+            sample['dim'] = img_dim
 
-        sample['label'] = self.maskrgb_to_class(
+        if not self.split == 'predict':
+            sample['label'] = self.maskrgb_to_class(
                                     np.array(sample['label'], dtype=np.uint8)
                                     )
         return sample
@@ -68,6 +75,10 @@ class SaltmarshSegmentation(data.Dataset):
                   #  print(imgname)
                     self.images.append(imgname)
                     i  = i +1
+            elif self.split == 'predict':
+                if(file.endswith(".jpg")):
+                    self.images.append(file)
+                    i = i + 1
         print('total images loaded: {}'.format(i))
         return True
 
@@ -118,8 +129,18 @@ class SaltmarshSegmentation(data.Dataset):
     def transform_ts(self, sample):
 
         composed_transforms = transforms.Compose([
-            tr.FixedResize(size=self.args.crop_size),
+            tr.FixedResize( crop_size=self.args.crop_size ),
             tr.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             tr.ToTensor()])
 
         return composed_transforms(sample)
+
+    def transform_pred(self, image):
+        composed_transforms = transforms.Compose([
+            transforms.Resize(size=(self.args.crop_size, self.args.crop_size)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
+            ]
+        )
+
+        return composed_transforms(image)

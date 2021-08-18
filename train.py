@@ -45,6 +45,7 @@ class Trainer(object):
         # Define Optimizer
         optimizer = torch.optim.SGD(train_params, momentum=args.momentum,
                                     weight_decay=args.weight_decay, nesterov=args.nesterov)
+      #  optimizer = torch.optim.Adam(train_params, weight_decay=args.weight_decay)
 
         # Define Criterion
         # whether to use class balanced weights
@@ -184,7 +185,7 @@ class Trainer(object):
         print("Classwise_IoU:")
         print(IoU)
         print('Loss: %.3f' % test_loss)
-        print(self.evaluator.confusion_matrix)
+      #  print(self.evaluator.confusion_matrix)
         save_confusion_matrix(self.evaluator.confusion_matrix, self.class_info.class_names)
 
 
@@ -235,7 +236,7 @@ def main():
                         choices=['resnet', 'xception', 'drn', 'mobilenet'],
                         help='backbone name (default: resnet)')
     parser.add_argument('--out-stride', type=int, default=16,
-                        help='network output stride (default: 8)')
+                        help='network output stride (default: 16)')
     parser.add_argument('--dataset', type=str, default='cityscapes',
                         choices=['pascal', 'coco', 'cityscapes','marsh'],
                         help='dataset name (default: pascal)')
@@ -302,6 +303,7 @@ def main():
                         help='skip validation during training')
 
     args = parser.parse_args()
+    args.train = True
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     if args.cuda:
         try:

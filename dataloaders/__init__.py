@@ -38,15 +38,20 @@ def make_data_loader(args, **kwargs):
         return train_loader, val_loader, test_loader, num_class
 
     elif args.dataset=='marsh':
-	
-        train_set= saltmarsh.SaltmarshSegmentation(args, split='train')
-        val_set= saltmarsh.SaltmarshSegmentation(args, split='val')
-        test_set= saltmarsh.SaltmarshSegmentation(args, split='test')
+        if args.train:
+            train_set = saltmarsh.SaltmarshSegmentation(args, split='train')
+            val_set = saltmarsh.SaltmarshSegmentation(args, split='val')
+            test_set = saltmarsh.SaltmarshSegmentation(args, split='test')
 
-        num_class = train_set.NUM_CLASSES
-        train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, drop_last=True, **kwargs) #made drop last true because of non-divisible number with batch size.
-        val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=False, drop_last=False, **kwargs)
-        test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False, drop_last=False, **kwargs)
-        return train_loader, val_loader, test_loader, num_class
+            num_class = train_set.NUM_CLASSES
+            train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True, drop_last=True, **kwargs) #made drop last true because of non-divisible number with batch size.
+            val_loader = DataLoader(val_set, batch_size=args.batch_size, shuffle=False, drop_last=False, **kwargs)
+            test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False, drop_last=False, **kwargs)
+            return train_loader, val_loader, test_loader, num_class
+        else:
+            predict_set = saltmarsh.SaltmarshSegmentation(args, split='predict')
+            predict_loader = DataLoader(predict_set, batch_size=args.batch_size, shuffle=False, drop_last=False, **kwargs)
+            return predict_loader, predict_set.NUM_CLASSES
+
     else:
         raise NotImplementedError

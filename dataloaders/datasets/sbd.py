@@ -92,7 +92,7 @@ class SBDSegmentation(data.Dataset):
 
 
 if __name__ == '__main__':
-    from dataloaders.utils import decode_segmap
+    from dataloaders.utils import encode_segmap
     from torch.utils.data import DataLoader
     import matplotlib.pyplot as plt
     import argparse
@@ -110,7 +110,7 @@ if __name__ == '__main__':
             img = sample['image'].numpy()
             gt = sample['label'].numpy()
             tmp = np.array(gt[jj]).astype(np.uint8)
-            segmap = decode_segmap(tmp, dataset='pascal')
+            segmap = encode_segmap(tmp, dataset='pascal')
             img_tmp = np.transpose(img[jj], axes=[1, 2, 0])
             img_tmp *= (0.229, 0.224, 0.225)
             img_tmp += (0.485, 0.456, 0.406)

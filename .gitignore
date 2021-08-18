@@ -8,6 +8,7 @@ __pycache__/
 
 Data/
 run/
+model_archive/
 .idea/
 confusion_matrix.jpg
 

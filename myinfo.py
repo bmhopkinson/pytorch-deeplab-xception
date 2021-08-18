@@ -10,7 +10,7 @@ class Path(object):
         elif dataset == 'coco':
             return '/path/to/datasets/coco/'
         elif dataset == 'marsh':
-            return '/home/cv-bhlab/Documents/ML/Semantic_Seg/marsh_plants/pytorch-deeplab-xception/Data/trial/'
+            return '/home/cv-bhlab/Documents/ML/Semantic_Seg/marsh_plants/pytorch-deeplab-xception/Data/real/'
 
         else:
             print('Dataset {} not available.'.format(dataset))
