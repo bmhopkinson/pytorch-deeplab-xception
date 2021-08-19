@@ -6,6 +6,7 @@ import yaml
 import torch
 import torchvision
 
+from PIL import Image
 from dataloaders import make_data_loader
 from modeling.deeplab import *
 import dataloaders.utils
@@ -51,38 +52,42 @@ def main():
 
     checkpoint = torch.load(args.model_path)
     model.load_state_dict(checkpoint['state_dict'])
-    # if args.cuda:
-    #     model.module.load_state_dict(checkpoint['state_dict'])
-    # else:
-    #     model.load_state_dict(checkpoint['state_dict'])
 
     model.eval()
     if args.cuda:
         model.cuda()
- #   tbar = tqdm(dataloader, desc='\r')
+
     torch.no_grad()
 
-    for i, sample in enumerate(dataloader):
-        print('starting batch {}'.format(i))
+    #process samples
+    tbar = tqdm(dataloader, desc='predictions')
+    for i, sample in enumerate(tbar):
+
+        #unpackage sample
         image = sample['image']
         label = sample['label']
+        dim = sample['dim']
+        dim = torch.cat((dim[0].unsqueeze(1), dim[1].unsqueeze(1)), dim=1)
+
         if args.cuda:
             image = image.cuda()
 
+        #forward pass through model and make predictions
         output = model(image)
         pred = output.data.cpu().numpy()
         pred = np.argmax(pred, axis=1)
-        print('finished batch {}'.format(i))
 
-        pred_rgb = dataloaders.utils.encode_seg_map_sequence(pred, args.dataset, dtype='int' )
-        print('pred_rgb.size() {}'.format(pred_rgb.size()))
+        pred_rgb = dataloaders.utils.encode_seg_map_sequence(pred, args.dataset, dtype='int' ) #convert predictions to rgb masks
 
-        for lbl, mask in zip(label, pred_rgb):
-            print('mask.size() {}'.format(mask.size()))
+        #write out masks (resize to original image dimensions)
+        for lbl, d, mask in zip(label, dim, pred_rgb):
+            w = d[0]
+            h = d[1]
             mask = torchvision.transforms.ToPILImage()(mask)
+            mask = mask.resize((w, h), Image.NEAREST)
+
             base_path, fn = os.path.split(lbl)
             base_fn, ext = os.path.splitext(fn)
-           # print('image size {}'.format(samp['dim']))
             outdir = base_path +"/preds/"
             if not os.path.isdir(outdir):
                 os.mkdir(outdir)
