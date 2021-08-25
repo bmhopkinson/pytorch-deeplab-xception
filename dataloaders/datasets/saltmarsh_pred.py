@@ -35,17 +35,17 @@ class SaltmarshSegmentation(data.Dataset):
     
     def __getitem__(self, index):
         
-        #img_path = self.root+"/"+self.split+"/"+self.images[index]
-        _img = Image.open(self.images[index]).convert('RGB')
+        img_path = self.root+"/"+self.split+"/"+self.images[index]
+        _img = Image.open(img_path).convert('RGB')
         img_dim = _img.size
 
         _target = []
         if not self.split == 'predict':
-           # lbl_path = self.root+"/"+self.split+"/"+self.masks[index]
-            _tmp = np.array(Image.open(self.masks[index]), dtype=np.uint8)
+            lbl_path = self.root+"/"+self.split+"/"+self.masks[index]
+            _tmp = np.array(Image.open(lbl_path), dtype=np.uint8)
             _target = Image.fromarray(np.array(_tmp))
         else:
-            _target = self.images[index]
+            _target = img_path
 
         sample = {'image': _img, 'label': _target}
 
@@ -69,24 +69,24 @@ class SaltmarshSegmentation(data.Dataset):
         i = 0
         #search_dir = self.root+"/"+self.split+"/"
         #print("searching dir: {}".format(self.root))
-      #  print("root dir: {}".format(self.root))
+        print("root dir: {}".format(self.root))
         base_dir = self.root+"/"+self.split+"/"
         if self.split == 'predict':
             base_dir = self.root
 
-       # print("searching dir: {}".format(base_dir))
+        print("searching dir: {}".format(base_dir))
         for file in os.listdir(base_dir):
 
             if (file.endswith("mask.png")):
-                    self.masks.append( os.path.join(base_dir, file) )
+                    self.masks.append(file)
                     s=file.split('_')
                     imgname="_".join(s[:-1])+".jpg"
                   #  print(imgname)
-                    self.images.append( os.path.join(base_dir, imgname) )
+                    self.images.append(imgname)
                     i  = i +1
             elif self.split == 'predict':
                 if(file.endswith(".jpg")):
-                    self.images.append( os.path.join(base_dir, file) )
+                    self.images.append(file)
                     i = i + 1
         print('total images loaded: {}'.format(i))
         return True

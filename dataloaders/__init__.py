@@ -1,7 +1,7 @@
 from dataloaders.datasets import cityscapes, coco, combine_dbs, pascal, sbd, saltmarsh
 from torch.utils.data import DataLoader
 
-def make_data_loader(args, **kwargs):
+def make_data_loader(args, root = './', **kwargs):
 
     if args.dataset == 'pascal':
         train_set = pascal.VOCSegmentation(args, split='train')
@@ -49,7 +49,7 @@ def make_data_loader(args, **kwargs):
             test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False, drop_last=False, **kwargs)
             return train_loader, val_loader, test_loader, num_class
         else:
-            predict_set = saltmarsh.SaltmarshSegmentation(args, split='predict')
+            predict_set = saltmarsh.SaltmarshSegmentation(args, root=root, split='predict')
             predict_loader = DataLoader(predict_set, batch_size=args.batch_size, shuffle=False, drop_last=False, **kwargs)
             return predict_loader, predict_set.NUM_CLASSES
 
