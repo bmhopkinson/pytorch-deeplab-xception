@@ -145,8 +145,17 @@ class SaltmarshSegmentation(data.Dataset):
         return composed_transforms(sample)
 
     def transform_pred(self, image):
+        resize = []
+        if len(self.args.crop_size) == 1:
+            resize = transforms.Resize(size=(self.args.crop_size, self.args.crop_size))
+        elif len(self.args.crop_size) == 2:
+            resize = transforms.Resize(size=(self.args.crop_size[1], self.args.crop_size[0]))  #resize is height, width but crop_size data is width, height
+        else:
+            raise "crop_size should be len 1 or 2"
+
         composed_transforms = transforms.Compose([
-            transforms.Resize(size=(self.args.crop_size, self.args.crop_size)),
+            resize,
+            #transforms.Resize(size=(800, 1200)),
             transforms.ToTensor(),
             transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
             ]

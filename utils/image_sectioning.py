@@ -155,7 +155,7 @@ def  _section_images(sec_data,files, dirpath, params):
                 im_rot = properly_orient_image(im)
                 im_rot = PIL_to_cv2(im_rot)
 
-                im_sections, offsets, dims = _section_single_image(im_rot, params['dim'])
+                im_sections, offsets, dims = _section_single_image(im_rot, params['section_dim'])
 
                 for i in range(len(im_sections)):
                     outfile =  file_base + "_" + str(i) +'.jpg'
@@ -182,7 +182,7 @@ def section_images(infolder, params):
         #send image files to split to n_proc different processes - all data is added to sec_data (manager.dict() - thread safe dict)
         jobs = []
         files = [f for f in files if not re.match(r'^\.',f)] #remove mac hidden files which start with dot
-        for chunk in chunks(files,math.ceil(len(files)/n_proc)):
+        for chunk in chunks(files, math.ceil(len(files)/n_proc)):
             #pdb.set_trace()
             #pool.apply(_fsec, args = (sec_data,chunk, dirpath, params))  #this didn't work for me - always used a single core
             j = mp.Process(target = _section_images, args = (sec_data,chunk, dirpath, params)) #this works - actually uses multiple cores

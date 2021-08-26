@@ -38,14 +38,19 @@ def parse_model_configfile(args):
     args.backbone = model_data['backbone']
     args.out_stride = model_data['out_stride']
     args.model_path = os.path.join(args.model, model_data['model_path'])
-    args.crop_size = model_data['crop_size']
+    #args.crop_size = model_data['crop_size']
     return args
 
 def setup_img_sectioning_params(args):
     re_fbase = re.compile('^(.*)\.[jJ][pP][eE]?[gG]')
-    section_dim = [7, 6]  # columns, rows to split input image into
+    section_dim = [4, 3]  # columns, rows to split input image into
+    img_dim = [4096, 2160]
+    patch_dim = [img_dim[0]/section_dim[0], img_dim[1]/section_dim[1]]
+    #avg_dim= int((patch_dim[0] + patch_dim[1])/2)
+    args.crop_size = patch_dim
+
     pred_format = "{}\t{:4.3f}\t{:5.1f}\t{:5.1f}\t{:5.1f}\t{:5.1f}\n"
-    params = {'dim': section_dim, 'fmt': pred_format, 're_fbase': re_fbase, 'workers': args.workers, 'write_imgs': True}
+    params = {'section_dim': section_dim, 'crop_size': patch_dim,  'fmt': pred_format, 're_fbase': re_fbase, 'workers': args.workers, 'write_imgs': True}
 
     #setup temporary folder to store section data
     tmp_folder = './tmp'  # start with a clean tmp folder
@@ -56,7 +61,7 @@ def setup_img_sectioning_params(args):
         os.mkdir(tmp_folder)
     params['outfld'] = tmp_folder
 
-    return params
+    return params, args
 
 def make_predictions(model, dataloader, args):
     model.eval()
@@ -109,7 +114,7 @@ def main():
     args.cuda = not args.no_cuda and torch.cuda.is_available()
 
     #setup dataset
-    params = setup_img_sectioning_params(args)
+    params, args = setup_img_sectioning_params(args)
     print('sectioning images for prediction')
     section_data = section_images(args.dataset_path, params)
     #print(section_data)
