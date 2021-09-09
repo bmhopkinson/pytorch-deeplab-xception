@@ -183,8 +183,6 @@ def section_images(infolder, params):
         #send image files to split to n_proc different processes - all data is added to sec_data (manager.dict() - thread safe dict)
         jobs = []
         files = [f for f in files if not re.match(r'^\.',f)] #remove mac hidden files which start with dot
-        n_chunks = math.ceil(len(files) / n_proc)
-        print('in section_images: n_chunks: {}, len(files) {} '.format(n_chunks, len(files)))
         for chunk in chunks(files, math.ceil(len(files)/n_proc)):
             #pdb.set_trace()
             #pool.apply(_fsec, args = (sec_data,chunk, dirpath, params))  #this didn't work for me - always used a single core
