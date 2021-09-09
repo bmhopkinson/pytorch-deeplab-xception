@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 
 import myinfo
+import helpers
 from myinfo import Path
 from dataloaders import make_data_loader
 from modeling.sync_batchnorm.replicate import patch_replication_callback
@@ -14,7 +15,7 @@ from utils.lr_scheduler import LR_Scheduler
 from utils.saver import Saver
 from utils.summaries import TensorboardSummary, save_confusion_matrix
 from utils.metrics import Evaluator
-
+from utils.error_visualization import Error_Visualizer
 
 class Trainer(object):
     def __init__(self, args):#,model):
@@ -159,6 +160,7 @@ class Trainer(object):
         self.evaluator.reset()
         tbar = tqdm(self.val_loader, desc='\r')
         test_loss = 0.0
+
         for i, sample in enumerate(tbar):
             image, target = sample['image'], sample['label']
             loss, pred = self.process_batch(image, target, False)
@@ -168,6 +170,7 @@ class Trainer(object):
             target = target.cpu().numpy()
             # Add batch sample into evaluator
             self.evaluator.add_batch(target, pred)
+
 
         # Fast test during the training
         Acc = self.evaluator.Pixel_Accuracy()
@@ -205,6 +208,7 @@ class Trainer(object):
         self.model.eval()
         self.evaluator.reset()
         print('TEST RESULTS ARE BELOW::::::::::::::::::::::::::::')
+        error_visualizer = Error_Visualizer()
         tbar = tqdm(self.test_loader, desc='\r')
         test_loss = 0.0
         for i, sample in enumerate(tbar):
@@ -213,6 +217,8 @@ class Trainer(object):
             # Add batch sample into evaluator
             target = target.cpu().numpy()
             self.evaluator.add_batch(target, pred)
+            error_visualizer.by_class(target, pred, sample['img_fname'], sample['dim'], [1, 4, 5])
+            helpers.write_predictions_rgb(pred, sample['img_fname'], sample['dim'], self.args.dataset)
 
         Acc = self.evaluator.Pixel_Accuracy()
         Acc_class = self.evaluator.Pixel_Accuracy_Class()

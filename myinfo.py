@@ -2,7 +2,7 @@ class Path(object):
     @staticmethod
     def db_root_dir(dataset):
         if dataset == 'pascal':
-            return '/home/cv-bhlab/Documents/ML/Semantic_Seg/Benchmarks/VOCdevkit/VOC2012/'  # folder that contains VOCdevkit/.
+            return '/home/hopkinsonlab/Documents/ML/Segmentation/Benchmarks/VOCdevkit/VOC2012/'  # folder that contains VOCdevkit/.
         elif dataset == 'sbd':
             return '/path/to/datasets/benchmark_RELEASE/'  # folder that contains dataset/.
         elif dataset == 'cityscapes':
@@ -10,7 +10,7 @@ class Path(object):
         elif dataset == 'coco':
             return '/path/to/datasets/coco/'
         elif dataset == 'marsh':
-            return '/home/cv-bhlab/Documents/ML/Semantic_Seg/marsh_plants/Data_deeplab/real/'
+            return '/home/hopkinsonlab/Documents/ML/Segmentation/marsh_plants/Data_deeplab/trial/'
 
         else:
             print('Dataset {} not available.'.format(dataset))

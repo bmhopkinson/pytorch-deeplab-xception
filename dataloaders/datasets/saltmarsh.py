@@ -47,7 +47,7 @@ class SaltmarshSegmentation(data.Dataset):
         else:
             _target = self.images[index]
 
-        sample = {'image': _img, 'label': _target}
+        sample = {'image': _img, 'label': _target }
 
         if self.split == 'train':
             sample =  self.transform_tr(sample)
@@ -57,12 +57,14 @@ class SaltmarshSegmentation(data.Dataset):
             sample =  self.transform_ts(sample)
         elif self.split == 'predict':
             sample['image'] = self.transform_pred(sample['image'])
-            sample['dim'] = img_dim
 
         if not self.split == 'predict':
             sample['label'] = self.maskrgb_to_class(
                                     np.array(sample['label'], dtype=np.uint8)
                                     )
+        sample['img_fname'] = self.images[index]
+        sample['dim'] = img_dim
+
         return sample
 
     def set_data_names(self):
@@ -70,7 +72,7 @@ class SaltmarshSegmentation(data.Dataset):
         #search_dir = self.root+"/"+self.split+"/"
         #print("searching dir: {}".format(self.root))
       #  print("root dir: {}".format(self.root))
-        base_dir = self.root+"/"+self.split+"/"
+        base_dir = self.root+self.split+"/"
         if self.split == 'predict':
             base_dir = self.root
 
@@ -145,8 +147,17 @@ class SaltmarshSegmentation(data.Dataset):
         return composed_transforms(sample)
 
     def transform_pred(self, image):
+        resize = []
+        if len(self.args.crop_size) == 1:
+            resize = transforms.Resize(size=(self.args.crop_size, self.args.crop_size))
+        elif len(self.args.crop_size) == 2:
+            resize = transforms.Resize(size=(self.args.crop_size[1], self.args.crop_size[0]))  #resize is height, width but crop_size data is width, height
+        else:
+            raise "crop_size should be len 1 or 2"
+
         composed_transforms = transforms.Compose([
-            transforms.Resize(size=(self.args.crop_size, self.args.crop_size)),
+            resize,
+            #transforms.Resize(size=(800, 1200)),
             transforms.ToTensor(),
             transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
             ]

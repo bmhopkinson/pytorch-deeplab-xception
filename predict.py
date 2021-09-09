@@ -47,7 +47,7 @@ def main():
     args.cuda = not args.no_cuda and torch.cuda.is_available()
 
     kwargs = {'num_workers': args.workers, 'pin_memory': True}
-    dataloader, nclass = make_data_loader(args, **kwargs)
+    dataloader, nclass = make_data_loader(args, root=args.dataset_path,**kwargs)
 
     model = DeepLab(num_classes=nclass,
                     backbone=args.backbone,
