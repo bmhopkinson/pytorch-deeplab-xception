@@ -24,6 +24,8 @@ def setup_argparser():
                         choices=['pascal', 'coco', 'cityscapes','marsh'],
                         help='dataset name (default: pascal)')
     parser.add_argument('--dataset_path', type=str, default=None, help='provide path to dataset')
+    parser.add_argument('--img_dim', type=int, nargs='+', default=None, help='image dimensions as width height')
+    parser.add_argument('--img_sections', type=int, nargs='+', default=None, help='number of sections to cut image into as columns rows')
     parser.add_argument('--batch-size', type=int, default=2,
                         metavar='N', help='input batch size for prediction (default: 2)')
     parser.add_argument('--workers', type=int, default=8,
@@ -43,12 +45,11 @@ def parse_model_configfile(args):
 
 def setup_img_sectioning_params(args):
     re_fbase = re.compile('^(.*)\.[jJ][pP][eE]?[gG]')
-    section_dim = [4, 3]  # columns, rows to split input image into
-    img_dim = [4096, 2160]
 
+    img_dim = args.img_dim
+    section_dim = args.img_sections
     patch_dim = [int(img_dim[0]/section_dim[0]), int(img_dim[1]/section_dim[1])]
 
-    #avg_dim= int((patch_dim[0] + patch_dim[1])/2)
     args.crop_size = patch_dim
 
     pred_format = "{}\t{:4.3f}\t{:5.1f}\t{:5.1f}\t{:5.1f}\t{:5.1f}\n"

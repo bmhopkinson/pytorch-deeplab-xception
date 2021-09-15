@@ -5,7 +5,7 @@ augmentation of [DeepLab-V3+](https://arxiv.org/pdf/1802.02611) implementation (
 ### Introduction
 Our current use case is semantic segmentation of plant species in salt marsh ecosystem images. The model is trained on small image patches as shown in Figure 1.
 
-![Results_Train](doc/train_results.png)
+![Results_Train](doc/train_results.jpg)
 
 The trained model can then be used to infer plant species in new larger images in a tiled fashion (Figure 2, not at full resolution). Using the maximum size tiles possible with available GPU memory (batch size = 1) produces better results. 
 ![Results_Predict](doc/predict_results.jpg)
@@ -20,38 +20,23 @@ The trained model can then be used to infer plant species in new larger images i
     ```Shell
     pip install matplotlib pillow tensorboardX tqdm
     ```
-### Training of Deeplab with ResNet backbone
+### Training of DeeplabV3+
 Follow steps below to train your model:
 
-0. Configure your dataset path and download the salt marsh dataset in Data folder from google drive link in parent folder.
+1. Configure your dataset path and class labels in myinfo.py.
 
-1. Input arguments: (see full input arguments via python train.py --help):
-    ```Shell
-    usage: train.py [-h] [--backbone {resnet,xception,drn,mobilenet}]
-                [--out-stride OUT_STRIDE] [--dataset {marsh}]
-                [--use-sbd] [--workers N] [--base-size BASE_SIZE]
-                [--crop-size CROP_SIZE] [--sync-bn SYNC_BN]
-                [--freeze-bn FREEZE_BN] [--loss-type {ce,focal}] [--epochs N]
-                [--start_epoch N] [--batch-size N] [--test-batch-size N]
-                [--use-balanced-weights] [--lr LR]
-                [--lr-scheduler {poly,step,cos}] [--momentum M]
-                [--weight-decay M] [--nesterov] [--no-cuda]
-                [--gpu-ids GPU_IDS] [--seed S] [--resume RESUME]
-                [--checkname CHECKNAME] [--ft] [--eval-interval EVAL_INTERVAL]
-                [--no-val]
+2. Initiate training by running one of the preconfigured scripts (train_marsh.sh, train_voc.sh, etc). parameter arguments (batch size, model backbone, initial learning rate, etc) can be configured by modifying the arguments in the shell script.
 
-    ```
-  ### Training of Deeplab with Compositional Sparse backbone
- 0. Configure your dataset path and download the salt marsh dataset in Data folder from google drive link in parent folder.
+3. save the selected model for use in making predictions (e.g. in a "model_archive" folder). the prediction script expects a small yaml configuration file to accompany each pytorch model (see 'doc/model_data.yaml' for example)
 
- 1. Install jupyter notebook and open by ```jupyter DeepLabV3 and CSN onSaltmarsh.ipynb```
- 
- 2. Run all columns of DeepLabV3 and CSN onSaltmarsh.ipynb
- 
- 3. Currently, to test out different hyperparameters of CSN, you will have make changes manually. We will update documentation to make this process better later. 
+# Predictions using DeeplabV3+
+the predict_section.py script will section large images into tiles sufficiently small to fit in GPU memory  
 
+1. place images to run predictions on into desired directory
+2. adjust arguments in predict_sections_marsh.sh including image dimensions, image sections, etc
+3. run predictions with predict_sections_marsh.sh. results will be placed in a "preds" subdirectory within the image source directory
 
-### Acknowledgement
+### Acknowledgements
 This repository is a lightly modified version of JF Zhang's Deeplab v3+ repo(https://github.com/jfzhang95/pytorch-deeplab-xception).
 [pytorch-deeplab-xception](https://github.com/jfzhang95/pytorch-deeplab-xception)
 
