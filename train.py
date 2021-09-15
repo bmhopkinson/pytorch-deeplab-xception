@@ -217,7 +217,7 @@ class Trainer(object):
             # Add batch sample into evaluator
             target = target.cpu().numpy()
             self.evaluator.add_batch(target, pred)
-            error_visualizer.by_class(target, pred, sample['img_fname'], sample['dim'], [1, 4, 5])
+            error_visualizer.by_class(target, pred, sample['img_fname'], sample['dim'], [1, 3, 4, 6])
             helpers.write_predictions_rgb(pred, sample['img_fname'], sample['dim'], self.args.dataset)
 
         Acc = self.evaluator.Pixel_Accuracy()

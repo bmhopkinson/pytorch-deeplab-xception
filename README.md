@@ -1,13 +1,14 @@
-# deeplab on Salt marsh data
-
-
+# Semantic Segmentation of Ecosystem Images using DeepLabV3+
+augmentation of [DeepLab-V3+](https://arxiv.org/pdf/1802.02611) implementation (jfzhang95/pytorch-deeplab-xception) for use with large (e.g. 4k) images such as those obtained from ecosystems.
 
 
 ### Introduction
-We implement Deeplab v3+ with ResNet and CSN backbones on Salt marsh dataset[DeepLab-V3-Plus](https://arxiv.org/pdf/1802.02611).
+Our current use case is semantic segmentation of plant species in salt marsh ecosystem images. The model is trained on small image patches as shown in Figure 1.
 
-![Results](doc/2.png)
+![Results_Train](doc/train_results.png)
 
+The trained model can then be used to infer plant species in new larger images in a tiled fashion (Figure 2, not at full resolution). Using the maximum size tiles possible with available GPU memory (batch size = 1) produces better results. 
+![Results_Predict](doc/predict_results.jpg)
 
 ### Installation
 0. Clone the repo.
@@ -54,4 +55,3 @@ Follow steps below to train your model:
 This repository is a lightly modified version of JF Zhang's Deeplab v3+ repo(https://github.com/jfzhang95/pytorch-deeplab-xception).
 [pytorch-deeplab-xception](https://github.com/jfzhang95/pytorch-deeplab-xception)
 
-Compositional Sparse Network's paper is under progress. 
