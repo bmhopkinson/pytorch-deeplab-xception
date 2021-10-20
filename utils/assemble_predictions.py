@@ -41,6 +41,7 @@ def _assemble_predictions(chunk, section_data):
 def assemble_predictions(section_data, params):
     n_proc = params['workers']
     jobs = []
+
     for chunk in chunks(section_data.keys(), math.ceil(len(section_data.keys())/n_proc)):
         j = mp.Process(target=_assemble_predictions, args=(chunk, section_data))
         j.start()

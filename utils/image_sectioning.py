@@ -186,7 +186,7 @@ def section_images(infolder, params):
         for chunk in chunks(files, math.ceil(len(files)/n_proc)):
             #pdb.set_trace()
             #pool.apply(_fsec, args = (sec_data,chunk, dirpath, params))  #this didn't work for me - always used a single core
-            j = mp.Process(target = _section_images, args = (sec_data,chunk, dirpath, params)) #this works - actually uses multiple cores
+            j = mp.Process(target = _section_images, args = (sec_data, chunk, dirpath, params)) #this works - actually uses multiple cores
             j.start()
             jobs.append(j)
 

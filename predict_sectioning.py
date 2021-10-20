@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 import yaml
 import shutil
-import torch
+import cv2
 import torchvision
 
 from PIL import Image
@@ -16,6 +16,41 @@ from utils.image_sectioning import section_images
 from utils.assemble_predictions import assemble_predictions
 
 path_regex = re.compile('.+?/(.*)$')
+
+n_classes =9
+class_labels = ['Background', 'Spartina', 'Spartina_dead', 'Sarcocornia', 'Batis', 'Juncus', 'Borrichia',
+                'Limonium', 'Other']
+class_map = {  # RGB to Class
+    (0, 0, 0): -1,  # out of bounds
+    (255, 255, 255): 0,  # background
+    (150, 255, 14): 0,  # Background_alt
+    (127, 255, 140): 1,  # Spartina
+    (113, 255, 221): 2,  # dead Spartina
+    (99, 187, 255): 3,  # Sarcocornia
+    (101, 85, 255): 4,  # Batis
+    (212, 70, 255): 5,  # Juncus
+    (255, 56, 169): 6,  # Borrichia
+    (255, 63, 42): 7,  # Limonium
+    (255, 202, 28): 8  # Other
+}
+
+def maskrgb_to_class(mask, class_map):
+    """ decode rgb mask to classes using class map"""
+    h, w, channels = mask.shape[0], mask.shape[1], mask.shape[2]
+    mask_out = -1 * np.ones((h, w), dtype=int)
+
+    for k in class_map:
+        matches = np.zeros((h, w, channels), dtype=bool)
+
+        for c in range(channels):
+            matches[:, :, c] = mask[:, :, c] == k[c]
+
+        matches_total = np.sum(matches, axis=2)
+        valid_idx = matches_total == channels
+        mask_out[valid_idx] = class_map[k]
+
+    return mask_out
+
 
 def setup_argparser():
     parser = argparse.ArgumentParser(description="PyTorch DeeplabV3Plus Prediction")
@@ -71,43 +106,74 @@ def make_predictions(model, dataloader, args):
     if args.cuda:
         model.cuda()
 
-    torch.no_grad()
-
     # process samples
     tbar = tqdm(dataloader, desc='predictions')
-    for i, sample in enumerate(tbar):
+    with torch.no_grad():
+        for i, sample in enumerate(tbar):
 
-        # unpackage sample
-        image = sample['image']
-        label = sample['label']
-        dim = sample['dim']
-        dim = torch.cat((dim[0].unsqueeze(1), dim[1].unsqueeze(1)), dim=1)
+            # unpackage sample
+            image = sample['image']
+            label = sample['label']
+            dim = sample['dim']
+            dim = torch.cat((dim[0].unsqueeze(1), dim[1].unsqueeze(1)), dim=1)
 
-        if args.cuda:
-            image = image.cuda()
+            if args.cuda:
+                image = image.cuda()
 
-        # forward pass through model and make predictions
-        output = model(image)
-        pred = output.data.cpu().numpy()
-        pred = np.argmax(pred, axis=1)
+            # forward pass through model and make predictions
+            output = model(image)
+            pred = output.data.cpu().numpy()
+            pred = np.argmax(pred, axis=1)
 
-        pred_rgb = dataloaders.utils.encode_seg_map_sequence(pred, args.dataset,
-                                                             dtype='int')  # convert predictions to rgb masks
+            pred_rgb = dataloaders.utils.encode_seg_map_sequence(pred, args.dataset,
+                                                                 dtype='int')  # convert predictions to rgb masks
 
-        # write out masks (resize to original image dimensions)
-        for lbl, d, mask in zip(label, dim, pred_rgb):
-            w = d[0]
-            h = d[1]
-            mask = torchvision.transforms.ToPILImage()(mask)
-            mask = mask.resize((w, h), Image.NEAREST)
+            # write out masks (resize to original image dimensions)
+            for lbl, d, mask in zip(label, dim, pred_rgb):
+                w = d[0]
+                h = d[1]
+                mask = torchvision.transforms.ToPILImage()(mask)
+                mask = mask.resize((w, h), Image.NEAREST)
 
-            base_path, fn = os.path.split(lbl)
-            base_fn, ext = os.path.splitext(fn)
-            outdir = base_path + "/preds/"
-            if not os.path.isdir(outdir):
-                os.mkdir(outdir)
-            outpath = outdir + base_fn + "_mask.png"
-            mask.save(outpath)
+                base_path, fn = os.path.split(lbl)
+                base_fn, ext = os.path.splitext(fn)
+                outdir = base_path + "/preds/"
+                if not os.path.isdir(outdir):
+                    os.mkdir(outdir)
+                outpath = outdir + base_fn + "_mask.png"
+                mask.save(outpath)
+
+def class_statistics(section_data, outfile):
+
+    class_stats = {}
+    for img_id in section_data:
+        dirpath, fname = os.path.split(section_data[img_id]['fullpath'])
+        name_ext = os.path.splitext(fname)
+        dirpath = dirpath + "/preds/"
+        fullpath = dirpath + name_ext[0] + '_pred.png'
+
+        img_pred = cv2.imread(fullpath)
+        img_pred = cv2.cvtColor(img_pred, cv2.COLOR_BGR2RGB)
+        img_class = maskrgb_to_class(img_pred, class_map)
+
+        pixel_count = []
+        for i in range(n_classes):
+            t = np.sum(img_class == i)
+            pixel_count.append(t)
+
+        class_stats[fullpath] = pixel_count
+
+    fout = open(outfile, 'w')
+    header = 'Image_ID\t' + '\t'.join([str(i) for i in class_labels]) + '\n'
+    fout.write(header)
+    for img_id in class_stats:
+        fout.write('{}'.format(img_id))
+        for elm in class_stats[img_id]:
+            fout.write('\t{:d}'.format(elm))
+        fout.write('\n')
+
+    fout.close()
+
 
 def main():
     parser = setup_argparser()
@@ -143,6 +209,7 @@ def main():
     print('assembling predicted images')
     assemble_predictions(section_data, params)
 
+    class_statistics(section_data, 'class_cover.txt')
 
 if __name__ == "__main__":
    main()

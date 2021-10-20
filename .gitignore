@@ -11,6 +11,7 @@ run/
 tmp/
 model_archive/
 .idea/
+preds/
 confusion_matrix.jpg
 
 # Distribution / packaging
